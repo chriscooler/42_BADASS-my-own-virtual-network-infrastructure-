@@ -1,0 +1,57 @@
+#! VTEP1 node config: chchao-vtep1
+# Linux bridge + VXLAN10 + FRR BGP EVPN
+
+### Linux: bridge br0 and vxlan10 (VNI 10)
+#!/bin/sh
+# P3 VTEP1: Linux bridge + vxlan10 (VNI 10) for EVPN
+# Run before/with FRR; eth0 IP is set by chchao-vtep1-frr.conf
+
+ip link add br0 type bridge 2>/dev/null || true
+ip link set dev br0 up
+ip link set dev eth0 up
+ip link add name vxlan10 type vxlan id 10 dev eth0 group 239.1.1.1 dstport 4789
+ip link set dev vxlan10 up
+ip link set dev eth1 up
+ip link set dev eth1 master br0
+ip link set dev vxlan10 master br0
+
+### FRR: BGP EVPN leaf, OSPF underlay
+! P3 VTEP1: BGP EVPN leaf, OSPF underlay, VNI 10
+frr defaults traditional
+hostname chchao-vtep1
+service integrated-vtysh-config
+!
+log stdout
+!
+! underlay toward RR (10.0.0.1)
+interface eth0
+ ip address 10.0.0.2/24
+!
+! access/host side
+interface eth1
+ description towards host_chchao-1
+!
+! vxlan10 already created in Linux (VNI 10)
+interface vxlan10
+ description VXLAN VNI 10
+!
+router ospf
+ router-id 2.2.2.2
+ network 10.0.0.0/24 area 0
+!
+router bgp 65000
+ bgp router-id 1.1.1.2
+ bgp log-neighbor-changes
+
+ neighbor RR peer-group
+ neighbor RR remote-as 65000
+ neighbor RR update-source eth0
+ neighbor 10.0.0.1 peer-group RR
+
+ address-family l2vpn evpn
+  neighbor RR activate
+  advertise-all-vni
+ exit-address-family
+!
+line vty
+!

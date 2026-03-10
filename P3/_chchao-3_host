@@ -1,0 +1,12 @@
+#! Host behind VTEP4: host_chchao-3
+# Phase 1 (no IP): for EVPN type 2 MAC learning
+#!/bin/sh
+# P3 host_chchao-3: L2 host, no IP (for type 2 verification)
+# Then run host_chchao-3-ip.sh to add IP for ping
+ip link set dev eth0 up
+
+# Phase 2 (with IP): for ping tests
+#!/bin/sh
+# P3 host_chchao-3: add IP for ping (run AFTER eval verifies type 2 with no IP)
+ip addr add 20.1.1.30/24 dev eth0
+

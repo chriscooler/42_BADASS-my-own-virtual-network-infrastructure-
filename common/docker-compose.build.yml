@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  p1-host:
+    build:
+      context: ../P1/docker/host
+  p1-router:
+    build:
+      context: ../P1/docker/router

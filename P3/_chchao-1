@@ -1,0 +1,33 @@
+#! RR node config: chchao-rr
+# FRR BGP EVPN Route Reflector (OSPF underlay)
+! P3 Route Reflector: BGP EVPN RR, OSPF underlay
+frr defaults traditional
+hostname chchao-rr
+service integrated-vtysh-config
+!
+! RR underlay
+interface eth0
+ ip address 10.0.0.1/24
+!
+router ospf
+  network 10.0.0.0/24 area 0
+!
+router bgp 65000
+  bgp router-id 1.1.1.1
+  bgp log-neighbor-changes
+  neighbor LEAFS peer-group
+  neighbor LEAFS remote-as 65000
+  neighbor LEAFS update-source eth0
+
+  # VTEP neighbors
+  neighbor 10.0.0.2 peer-group LEAFS
+  neighbor 10.0.0.3 peer-group LEAFS
+  neighbor 10.0.0.4 peer-group LEAFS
+
+  address-family l2vpn evpn
+    neighbor LEAFS activate
+    neighbor LEAFS route-reflector-client
+  exit-address-family
+!
+line vty
+!
