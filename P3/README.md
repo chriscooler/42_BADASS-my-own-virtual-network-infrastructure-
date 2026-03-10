@@ -1,7 +1,22 @@
-# P3 – BGP EVPN (42 VM)
+## What each SetupImages folder does
 
-## Part A – Work in the VM
+**SetupImages is the only source for P3:** every node (RR, VTEPs, hosts) is built from one subfolder. Each folder has its Dockerfile + scripts/config needed to build and run that node.
 
+| Folder | Role in P3 | Contents | What the image does when run |
+|--------|------------|----------|------------------------------|
+| **rr_lgirault_1** | Route Reflector (RR) | Dockerfile, frr.conf, init_rr.sh | Brings up eth0/eth1/eth2/lo, starts FRR. BGP EVPN RR + OSPF underlay. |
+| **router_chchao_1** | VTEP 1 (your login) | Dockerfile, frr.conf, init_router_chchao_1.sh | Brings up interfaces, creates br0 + vxlan10 (VNI 10), starts FRR. BGP EVPN leaf toward RR. |
+| **router_lgirault_2** | VTEP 2 | Dockerfile, frr.conf, init_router_lgirault_2.sh | Same as above: br0, vxlan10 (VNI 10), FRR BGP EVPN leaf. |
+| **router_thrio_3** | VTEP 3 | Dockerfile, frr.conf, init_router_thrio_3.sh | Same: br0, vxlan10 (VNI 10), FRR BGP EVPN leaf. |
+| **host_chchao_1** | Host behind VTEP 1 | Dockerfile, add_ip_host1.sh | Brings eth1 up; optional IP for ping (see script comments). |
+| **host_lgirault_2** | Host behind VTEP 2 | Dockerfile, add_Ip_Host2.sh | Brings eth0 up; optional IP for ping. |
+| **host_thrio_3** | Host behind VTEP 3 | Dockerfile, add_Ip_Host3.sh | Brings eth0 up; optional IP for ping. |
+
+Each folder is self-contained: `docker build` in that folder produces one image. Use that image in GNS3 for the matching node (RR, VTEP, or host).
+
+---
+
+## Part A 
 ### 1. Clone and open project
 
 ```bash
@@ -24,25 +39,31 @@ Or build one by one, e.g.:
 cd P3/SetupImages/router_chchao_1 && docker build -t p3-router_chchao_1 .
 ```
 
+How to run each image on its own
+```bash
+cd P3/SetupImages/router_chchao_1 && docker build -t p3-router_chchao_1 . && docker run -it --rm p3-router_chchao_1
+```
+
+
 ### 3. Start GNS3
 
 - Open GNS3 in the VM.
 - **Import project 3:** File → Import portable project → choose `P3/P3.gns3project` (or your exported ZIP). Include base images when asked.
 - **Run the imported machines:** Start all nodes (RR, VTEPs, hosts) from the topology.
-- **Configure the machines:** Each node uses the config baked into its image (from `P3/config/` or the same content in `SetupImages/`). No manual paste needed if you built from SetupImages; otherwise paste the right `frr.conf` or script per node.
+- **Configure the machines:** Each node uses the config baked into its image (from `P3/SetupImages/`). No manual paste needed if you built from SetupImages.
 
 ---
 
-## Part B – Step-by-step test (evaluation checklist)
+## Part B – Step-by-step test
 
 A person from the group should show the following with short explanations.
 
 ### 1. Configuration files for this part
 
-- Point to **P3/config/** (and/or **P3/SetupImages/**):
-  - RR: `rr_lgirault_1/frr.conf`, `init_rr.sh`
-  - VTEPs: `router_chchao_1/`, `router_lgirault_2/`, `router_thrio_3/` (each: `frr.conf`, `init_router_*.sh`)
-  - Hosts: `host_chchao_1/`, `host_lgirault_2/`, `host_thrio_3/` (each: `add_Ip_Host*.sh` or `add_ip_host1.sh`)
+- Point to **P3/SetupImages/** (and flat files **P3/_chchao-*** for the subject layout):
+  - RR: `SetupImages/rr_lgirault_1/` (frr.conf, init_rr.sh)
+  - VTEPs: `router_chchao_1/`, `router_lgirault_2/`, `router_thrio_3/` (each: frr.conf, init_router_*.sh)
+  - Hosts: `host_chchao_1/`, `host_lgirault_2/`, `host_thrio_3/` (each: add_Ip_Host*.sh or add_ip_host1.sh)
 
 ### 2. Import project 3 into GNS3
 
@@ -57,8 +78,7 @@ A person from the group should show the following with short explanations.
 
 ### 4. Configure all machines in the subject topology
 
-- If using pre-built images from SetupImages: config is already in the image; interfaces and FRR start via the init scripts.
-- Otherwise: paste the matching `frr.conf` into each router/VTEP console and run the init script; on hosts run the host script (e.g. `add_ip_host1.sh` or `add_Ip_Host1.sh`).
+- Config is in the image when you build from SetupImages; interfaces and FRR start via the init scripts. No extra paste needed.
 
 ### 5. Disable all HOST machines in GNS3
 
@@ -99,7 +119,7 @@ A person from the group should show the following with short explanations.
 
 ### 10. Checklist summary
 
-- [ ] Configuration files shown (P3/config and/or SetupImages).
+- [ ] Configuration files shown (P3/SetupImages and flat files _chchao-*).
 - [ ] Project 3 imported into GNS3.
 - [ ] All machines run and are configured per topology.
 - [ ] All hosts disabled → only type 3 routes.

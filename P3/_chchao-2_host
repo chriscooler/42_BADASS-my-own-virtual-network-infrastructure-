@@ -1,0 +1,6 @@
+# P3 _chchao-2_host (host behind VTEP _chchao-2)
+
+#!/bin/sh
+ip link set eth1 up
+# For ping: ip addr add 20.1.1.20/24 dev eth1
+exec /bin/sh

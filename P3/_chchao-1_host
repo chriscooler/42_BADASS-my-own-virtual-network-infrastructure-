@@ -1,0 +1,7 @@
+# P3 _chchao-1_host (host behind VTEP _chchao-2)
+# Run in container: bring eth1 up, no IP for type-2 check; then add IP for ping.
+
+#!/bin/sh
+ip link set eth1 up
+# For ping: ip addr add 20.1.1.10/24 dev eth1
+exec /bin/sh
