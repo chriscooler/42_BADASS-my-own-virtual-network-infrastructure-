@@ -39,7 +39,7 @@ Or build one by one, e.g.:
 cd P3/SetupImages/router_chchao_1 && docker build -t p3-router_chchao_1 .
 ```
 
-How to run each image on its own
+Or how to run each image on its own, e.g.:
 ```bash
 cd P3/SetupImages/router_chchao_1 && docker build -t p3-router_chchao_1 . && docker run -it --rm p3-router_chchao_1
 ```
@@ -56,11 +56,9 @@ cd P3/SetupImages/router_chchao_1 && docker build -t p3-router_chchao_1 . && doc
 
 ## Part B – Step-by-step test
 
-A person from the group should show the following with short explanations.
-
 ### 1. Configuration files for this part
 
-- Point to **P3/SetupImages/** (and flat files **P3/_chchao-*** for the subject layout):
+- Point to **P3/SetupImages/**
   - RR: `SetupImages/rr_lgirault_1/` (frr.conf, init_rr.sh)
   - VTEPs: `router_chchao_1/`, `router_lgirault_2/`, `router_thrio_3/` (each: frr.conf, init_router_*.sh)
   - Hosts: `host_chchao_1/`, `host_lgirault_2/`, `host_thrio_3/` (each: add_Ip_Host*.sh or add_ip_host1.sh)
