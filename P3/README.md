@@ -16,6 +16,19 @@ Each folder is self-contained: `docker build` in that folder produces one image.
 
 ---
 
+## How to use the flat files (_chchao-1, _chchao-1_host, …)
+
+The flat files under `P3/` are the **subject layout** and your **paste source** when you configure by hand (e.g. generic FRR/host image in GNS3, no pre-built P3 image).
+
+- **Router/VTEP nodes:** Open `_chchao-1`, `_chchao-2`, `_chchao-3`, `_chchao-4`. Each file has:
+  - A block of **Linux commands** (br0, vxlan10, brctl) — run these in the node’s shell first if it’s a VTEP.
+  - A block of **FRR config** (hostname, interface, router bgp, router ospf) — run `vtysh` then `conf t`, then paste that block.
+- **Host nodes:** Open `_chchao-1_host`, `_chchao-2_host`, `_chchao-3_host`. Run the shell commands in the host’s console (bring interface up; optionally add IP for ping).
+
+**Mapping:** `_chchao-1` = RR (frrr-1), `_chchao-2` = VTEP1 (frrr-2), `_chchao-3` = VTEP2 (frrr-3), `_chchao-4` = VTEP3 (frrr-4). Hosts: `_chchao-1_host` = host behind VTEP1 (alpine-1), etc.
+
+---
+
 ## Part A 
 ### 1. Clone and open project
 
@@ -124,3 +137,76 @@ cd P3/SetupImages/router_chchao_1 && docker build -t p3-router_chchao_1 . && doc
 - [ ] One host enabled with no IP → type 2 route visible on VTEP.
 - [ ] All hosts enabled, IPs configured, ping works.
 - [ ] Packet capture shows VNI 10 and OSPF on the underlay.
+
+---
+
+## Part C – Step-by-step test order (your runbook)
+
+Order to configure and verify P3. Use flat files `_chchao-*` as reference; paste from them into each node’s console.
+
+### 1. RR (frrr-1) — `_chchao-1`
+
+- In GNS3, open the RR node console. Run:
+  ```bash
+  vtysh
+  conf t
+  ```
+- Paste the **FRR block** from `P3/_chchao-1` (from `hostname` through `line vty`).
+- Important: `bgp listen range 1.1.1.0/29 peer-group ibgp` makes the RR accept dynamic BGP peers in that range. The block `address-family l2vpn evpn` with `neighbor ibgp route-reflector-client` is required so EVPN routes are reflected to all VTEPs.
+
+### 2. VTEP1 (frrr-2) — `_chchao-2`
+
+- **Shell first (Linux):**
+  ```bash
+  ip link add br0 type bridge
+  ip link set dev br0 up
+  ip link add vxlan10 type vxlan id 10 dstport 4789
+  ip link set dev vxlan10 up
+  brctl addif br0 vxlan10
+  brctl addif br0 eth1
+  ```
+- **Then FRR:** `vtysh` → `conf t` → paste the FRR block from `_chchao-2`. It must include **`ip ospf area 0`** under interface eth0 and lo (like your note), otherwise OSPF may not come up.
+
+### 3. VTEP2 (frrr-3) — `_chchao-3`
+
+- `vtysh` → `conf t` → paste the FRR block from `_chchao-3` (hostname chchao_2, interface eth1/lo, router bgp, router ospf).
+
+### 4. VTEP3 (frrr-4) — `_chchao-4`
+
+- **Shell first (Linux):**
+  ```bash
+  ip link add br0 type bridge
+  ip link set dev br0 up
+  ip link add vxlan10 type vxlan id 10 dstport 4789
+  ip link set dev vxlan10 up
+  brctl addif br0 vxlan10
+  brctl addif br0 eth1
+  ```
+- **Then FRR:** `vtysh` → `conf t` → paste the FRR block from `_chchao-4` (hostname chchao_4, interface eth2/lo, router bgp, router ospf).
+
+### 5. Check: only type 3, no type 2 (hosts still off)
+
+- On frrr-4 (or any VTEP):  
+  `vtysh -c "show ip route"`  
+  `vtysh -c "show bgp summary"`  
+  `vtysh -c "show bgp l2vpn evpn"`
+- You should see **only type 3** routes (inclusive multicast, VNI 10). **No type 2** (no MACs yet because no host is up).
+
+### 6. Start one host (alpine-1), no IP — type 2 appears
+
+- In GNS3, start the host behind VTEP1 (e.g. alpine-1 / _chchao-1_host). In its console run only:  
+  `ip link set eth1 up`  
+  (no `ip addr add`; see `_chchao-1_host`).
+- On frrr-3 (or the VTEP that has that host):  
+  `vtysh -c "show bgp l2vpn evpn"`  
+  → a **type 2** route should appear with the host’s MAC, e.g. `[2]:[0]:[48]:[92:63:b4:d1:a7:8b]`.
+- On the host, confirm MAC: `ifconfig eth1`. Same MAC should show in the EVPN type 2 route. You can also run the same `show bgp l2vpn evpn` on frrr-4 to see the type 2 route reflected via the RR.
+
+### 7. Enable all hosts and add IPs for ping
+
+- Start the other host(s). On each host console:
+  - **alpine-1 (host behind VTEP1):**  
+    `ip addr add 20.1.1.1/24 dev eth1`
+  - **alpine-3 (host behind VTEP3):**  
+    `ip addr add 20.1.1.2/24 dev eth0`
+- Then from one host: `ping 20.1.1.2` or `ping 20.1.1.1`. Packet inspection: capture on a link and show VXLAN (VNI 10) and OSPF on the underlay.
